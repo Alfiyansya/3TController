@@ -1,0 +1,251 @@
+---
+title: 3T Controller ERD & Logical Schema
+---
+erDiagram
+  USER {
+    uuid user_id PK
+    string full_name
+    string email UK
+    string username UK
+    string password_hash
+    uuid role_id FK
+    boolean is_active
+    datetime last_login_at
+    datetime created_at
+    datetime updated_at
+  }
+
+  ROLE {
+    uuid role_id PK
+    string role_name UK
+    string role_scope
+    string description
+    datetime created_at
+    datetime updated_at
+  }
+
+  SESSION_CONTEXT {
+    uuid session_id PK
+    uuid user_id FK
+    string jwt_jti UK
+    datetime issued_at
+    datetime expires_at
+    datetime revoked_at
+    string ip_address
+    string user_agent
+    string session_status
+  }
+
+  NODE {
+    uuid node_id PK
+    string node_code UK
+    string node_name
+    string node_type
+    string ip_address
+    string mac_address
+    string building_name
+    string floor_name
+    decimal map_x
+    decimal map_y
+    string status
+    datetime created_at
+    datetime updated_at
+  }
+
+  ACCESS_POINT {
+    uuid access_point_id PK
+    uuid node_id FK
+    string ap_code UK
+    string ap_name
+    string ip_address
+    string mac_address
+    string ssid
+    string building_name
+    string floor_name
+    decimal map_x
+    decimal map_y
+    string status
+    datetime created_at
+    datetime updated_at
+  }
+
+  ZONE {
+    uuid zone_id PK
+    string zone_code UK
+    string zone_name
+    string zone_category
+    string priority_type
+    string basis_type
+    string description
+    boolean is_active
+    datetime created_at
+    datetime updated_at
+  }
+
+  ZONE_MAPPING {
+    uuid zone_mapping_id PK
+    uuid zone_id FK
+    uuid node_id FK
+    uuid access_point_id FK
+    string ip_cidr
+    string mac_address
+    string mapping_basis
+    boolean is_primary
+    datetime created_at
+    datetime updated_at
+  }
+
+  TRAFFIC_POLICY {
+    uuid policy_id PK
+    string policy_code UK
+    string policy_name
+    string policy_mode
+    integer priority_percent
+    integer public_percent
+    string router_strategy
+    string description
+    boolean is_default
+    boolean is_active
+    datetime created_at
+    datetime updated_at
+  }
+
+  POLICY_ZONE_RULE {
+    uuid policy_zone_rule_id PK
+    uuid policy_id FK
+    uuid zone_id FK
+    string zone_role
+    integer min_bandwidth_kbps
+    integer max_bandwidth_kbps
+    integer burst_bandwidth_kbps
+    integer priority_weight
+    boolean is_throttled
+    datetime created_at
+    datetime updated_at
+  }
+
+  SCHEDULE_PRESET {
+    uuid schedule_preset_id PK
+    string preset_code UK
+    string preset_name
+    time start_time
+    time end_time
+    string timezone
+    string active_days
+    uuid policy_id FK
+    string restore_mode
+    boolean is_active
+    datetime created_at
+    datetime updated_at
+  }
+
+  ACTIVE_POLICY {
+    uuid active_policy_id PK
+    uuid policy_id FK
+    uuid schedule_preset_id FK
+    uuid activated_by_user_id FK
+    string activation_source
+    datetime activated_at
+    datetime effective_until
+    string state
+    datetime created_at
+    datetime updated_at
+  }
+
+  OVERRIDE_STATE {
+    uuid override_id PK
+    uuid target_zone_id FK
+    uuid policy_id FK
+    uuid activated_by_user_id FK
+    string override_reason
+    boolean master_switch_on
+    datetime started_at
+    datetime ended_at
+    string override_status
+    datetime created_at
+    datetime updated_at
+  }
+
+  ROUTER_INTEGRATION_CONFIG {
+    uuid router_config_id PK
+    string router_name
+    string router_vendor
+    string router_host
+    integer router_port
+    string protocol_type
+    string auth_mode
+    string username
+    string secret_ref
+    boolean tls_enabled
+    boolean is_primary
+    boolean is_active
+    datetime last_connected_at
+    datetime created_at
+    datetime updated_at
+  }
+
+  EXECUTION_LOG {
+    uuid execution_log_id PK
+    uuid router_config_id FK
+    uuid policy_id FK
+    uuid schedule_preset_id FK
+    uuid override_id FK
+    string trigger_type
+    string command_summary
+    string execution_status
+    integer retry_count
+    integer duration_ms
+    string error_message
+    datetime executed_at
+  }
+
+  TRAFFIC_METRIC {
+    uuid traffic_metric_id PK
+    uuid zone_id FK
+    uuid node_id FK
+    uuid access_point_id FK
+    bigint tx_bps
+    bigint rx_bps
+    integer client_count
+    string load_status
+    datetime observed_at
+  }
+
+  AUDIT_LOG {
+    uuid audit_log_id PK
+    uuid user_id FK
+    string entity_type
+    uuid entity_id
+    string action_type
+    string before_state
+    string after_state
+    string source_ip
+    datetime created_at
+  }
+
+  ROLE ||--o{ USER : assigns
+  USER ||--o{ SESSION_CONTEXT : owns
+  USER ||--o{ ACTIVE_POLICY : activates
+  USER ||--o{ OVERRIDE_STATE : triggers
+  USER ||--o{ AUDIT_LOG : performs
+
+  NODE ||--o{ ACCESS_POINT : hosts
+  ZONE ||--o{ ZONE_MAPPING : defines
+  NODE ||--o{ ZONE_MAPPING : mapped_by
+  ACCESS_POINT ||--o{ ZONE_MAPPING : mapped_by
+
+  TRAFFIC_POLICY ||--o{ POLICY_ZONE_RULE : contains
+  ZONE ||--o{ POLICY_ZONE_RULE : targeted_by
+  TRAFFIC_POLICY ||--o{ SCHEDULE_PRESET : scheduled_as
+  TRAFFIC_POLICY ||--o{ ACTIVE_POLICY : becomes
+  TRAFFIC_POLICY ||--o{ OVERRIDE_STATE : applied_by
+  ZONE ||--o{ OVERRIDE_STATE : prioritized_for
+
+  ROUTER_INTEGRATION_CONFIG ||--o{ EXECUTION_LOG : executes
+  TRAFFIC_POLICY ||--o{ EXECUTION_LOG : logged_for
+  SCHEDULE_PRESET ||--o{ EXECUTION_LOG : triggered_by
+  OVERRIDE_STATE ||--o{ EXECUTION_LOG : caused_by
+
+  ZONE ||--o{ TRAFFIC_METRIC : aggregates
+  NODE ||--o{ TRAFFIC_METRIC : reports
+  ACCESS_POINT ||--o{ TRAFFIC_METRIC : reports
